@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MyRelay Bot - Telegram Mini App</title>
+    <title>MyRelay Bot - 3D Game</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -53,6 +53,17 @@
         .loading-spinner { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); display: none; align-items: center; justify-content: center; z-index: 1000; }
         .loading-spinner.show { display: flex; }
         .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-left: 4px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; }
+        
+        /* Game Styles */
+        .game-container { min-height: 100vh; background: linear-gradient(135deg, #1a1a2e, #16213e); }
+        .game-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: rgba(0, 0, 0, 0.7); color: white; }
+        .back-btn { background: #0088cc; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+        .game-stats { display: flex; gap: 20px; font-size: 16px; font-weight: bold; }
+        #gameCanvas { display: block; width: 100%; background: linear-gradient(180deg, #0f3460, #1a1a2e); }
+        .game-controls { display: flex; justify-content: center; gap: 20px; padding: 20px; background: rgba(0, 0, 0, 0.8); }
+        .control-btn { background: #0088cc; color: white; border: none; padding: 15px 25px; border-radius: 50%; font-size: 20px; font-weight: bold; cursor: pointer; min-width: 60px; min-height: 60px; }
+        .game-instructions { text-align: center; color: white; padding: 10px; background: rgba(0, 0, 0, 0.5); }
+        
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @media (max-width: 480px) { .stats-grid, .actions-grid { grid-template-columns: 1fr; } .composer-actions { flex-direction: column; } .btn-primary, .btn-secondary { width: 100%; } }
         @media (prefers-color-scheme: dark) { :root { --bg-primary: #1c1c1c; --bg-secondary: #2d2d2d; --text-primary: #ffffff; --text-secondary: #b0b0b0; --border-color: #444444; } }
@@ -77,7 +88,7 @@
                     <button class="action-btn" id="sendMessageBtn"><span class="btn-icon">📨</span><span>Send Message</span></button>
                     <button class="action-btn" id="manageChatsBtn"><span class="btn-icon">💬</span><span>Manage Chats</span></button>
                     <button class="action-btn" id="settingsBtn"><span class="btn-icon">⚙️</span><span>Settings</span></button>
-                    <button class="action-btn" id="analyticsBtn"><span class="btn-icon">📈</span><span>Analytics</span></button>
+                    <button class="action-btn" id="analyticsBtn"><span class="btn-icon">🎮</span><span>3D Game</span></button>
                 </div>
             </div>
             <div class="composer-section">
@@ -100,27 +111,28 @@
         </footer>
     </div>
     <div class="loading-spinner" id="loadingSpinner"><div class="spinner"></div></div>
+
     <script>
         class TelegramMiniApp {
             constructor() {
                 this.tg = window.Telegram?.WebApp;
+                this.currentScreen = 'main';
+                this.game = null;
                 this.init();
             }
+
             init() {
                 console.log('🚀 MyRelay Bot Mini App Started');
                 if (this.tg?.initData) {
                     this.tg.expand();
                     this.tg.enableClosingConfirmation();
                     this.tg.ready();
-                    console.log('✅ Telegram Web App Initialized');
-                } else {
-                    console.log('🌐 Running in Standalone Mode');
                 }
                 this.setTheme();
                 this.bindEvents();
                 this.loadData();
-                this.simulateUserData();
             }
+
             setTheme() {
                 try {
                     if (this.tg?.colorScheme) {
@@ -134,16 +146,18 @@
                     console.log('Theme error:', error);
                 }
             }
+
             bindEvents() {
                 document.getElementById('sendMessageBtn').addEventListener('click', () => this.showAlert('Send Message', 'Message sending feature will be implemented here.'));
                 document.getElementById('manageChatsBtn').addEventListener('click', () => this.showAlert('Manage Chats', 'Chat management feature will be implemented here.'));
                 document.getElementById('settingsBtn').addEventListener('click', () => this.showAlert('Settings', 'Settings panel will be implemented here.'));
-                document.getElementById('analyticsBtn').addEventListener('click', () => this.showAlert('Analytics', 'Analytics dashboard will be implemented here.'));
+                document.getElementById('analyticsBtn').addEventListener('click', () => this.start3DGame());
                 document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
                 document.getElementById('clearBtn').addEventListener('click', () => this.clearMessage());
                 document.getElementById('messageInput').addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'Enter') this.sendMessage(); });
                 if (this.tg) this.tg.onEvent('themeChanged', this.setTheme.bind(this));
             }
+
             async loadData() {
                 this.showLoading(true);
                 try {
@@ -156,17 +170,18 @@
                     this.showLoading(false);
                 }
             }
+
             updateStats(data) {
                 document.getElementById('messagesCount').textContent = data.messages.toLocaleString();
                 document.getElementById('activeChats').textContent = data.chats.toLocaleString();
             }
+
             loadActivity() {
                 const activities = [
                     { type: 'success', title: 'Message sent to Group Chat', time: '2 minutes ago' },
                     { type: 'info', title: 'New chat connected', time: '1 hour ago' },
                     { type: 'success', title: 'Broadcast completed', time: '3 hours ago' },
-                    { type: 'info', title: 'Settings updated', time: '1 day ago' },
-                    { type: 'success', title: 'Welcome message sent', time: '2 days ago' }
+                    { type: 'info', title: 'Settings updated', time: '1 day ago' }
                 ];
                 const activityList = document.getElementById('activityList');
                 activityList.innerHTML = '';
@@ -177,21 +192,26 @@
                     activityList.appendChild(activityItem);
                 });
             }
+
             sendMessage() {
                 const messageInput = document.getElementById('messageInput');
                 const message = messageInput.value.trim();
                 if (!message) return this.showAlert('Error', 'Please enter a message.');
-                if (message.length > 500) return this.showAlert('Error', 'Message is too long. Maximum 500 characters.');
                 this.showLoading(true);
                 setTimeout(() => {
                     this.showLoading(false);
-                    this.showAlert('Success', `Message sent successfully!\n\n"${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+                    this.showAlert('Success', 'Message sent successfully!');
                     messageInput.value = '';
                     this.addNewActivity(`Message sent: ${message.substring(0, 30)}${message.length > 30 ? '...' : ''}`);
                     this.incrementMessagesCount();
                 }, 1500);
             }
-            clearMessage() { document.getElementById('messageInput').value = ''; document.getElementById('messageInput').focus(); }
+
+            clearMessage() { 
+                document.getElementById('messageInput').value = ''; 
+                document.getElementById('messageInput').focus(); 
+            }
+
             addNewActivity(title) {
                 const activityList = document.getElementById('activityList');
                 const activityItem = document.createElement('div');
@@ -200,25 +220,304 @@
                 activityList.insertBefore(activityItem, activityList.firstChild);
                 if (activityList.children.length > 5) activityList.removeChild(activityList.lastChild);
             }
+
             incrementMessagesCount() {
                 const countElement = document.getElementById('messagesCount');
                 const currentCount = parseInt(countElement.textContent.replace(/,/g, '')) || 0;
                 countElement.textContent = (currentCount + 1).toLocaleString();
             }
-            simulateUserData() {
-                if (this.tg?.initDataUnsafe?.user) {
-                    const user = this.tg.initDataUnsafe.user;
-                    console.log('Telegram User:', user);
-                    const subtitle = document.querySelector('.app-subtitle');
-                    if (subtitle && user.first_name) subtitle.textContent = `Welcome, ${user.first_name}!`;
+
+            start3DGame() {
+                this.showGameScreen();
+                setTimeout(() => {
+                    this.game = new CubeRunnerGame();
+                    this.game.start();
+                }, 100);
+            }
+
+            showGameScreen() {
+                this.currentScreen = 'game';
+                document.querySelector('.app-container').innerHTML = `
+                    <div class="game-container">
+                        <div class="game-header">
+                            <button class="back-btn" id="backToMain">← Back</button>
+                            <div class="game-stats">
+                                <span>Score: <span id="score">0</span></span>
+                                <span>Lives: <span id="lives">3</span></span>
+                            </div>
+                        </div>
+                        <canvas id="gameCanvas"></canvas>
+                        <div class="game-controls">
+                            <button class="control-btn" id="leftBtn">←</button>
+                            <button class="control-btn" id="rightBtn">→</button>
+                            <button class="control-btn" id="jumpBtn">↑</button>
+                        </div>
+                        <div class="game-instructions">
+                            <p>Collect green cubes ⬜️ | Avoid red cubes 🟥 | Use arrows or buttons</p>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('backToMain').addEventListener('click', () => this.showMainScreen());
+            }
+
+            showMainScreen() {
+                if (this.game) {
+                    this.game.stop();
+                    this.game = null;
+                }
+                location.reload();
+            }
+
+            showLoading(show) { 
+                document.getElementById('loadingSpinner').classList.toggle('show', show); 
+            }
+
+            showAlert(title, message) { 
+                this.tg?.showAlert ? this.tg.showAlert(`${title}: ${message}`) : alert(`${title}\n\n${message}`); 
+            }
+
+            simulateApiCall(duration) { 
+                return new Promise(resolve => setTimeout(resolve, duration)); 
+            }
+        }
+
+        class CubeRunnerGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.setupCanvas();
+                this.score = 0;
+                this.lives = 3;
+                this.gameOver = false;
+                this.player = {
+                    x: this.canvas.width / 2, y: this.canvas.height - 100,
+                    width: 40, height: 40, speed: 8, color: '#0088cc',
+                    isJumping: false, jumpHeight: 0, maxJump: 80
+                };
+                this.cubes = [];
+                this.obstacles = [];
+                this.particles = [];
+                this.keys = {};
+                this.setupEventListeners();
+                this.spawnInterval = null;
+            }
+
+            setupCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight - 200;
+            }
+
+            setupEventListeners() {
+                document.addEventListener('keydown', (e) => { this.keys[e.key] = true; });
+                document.addEventListener('keyup', (e) => { this.keys[e.key] = false; });
+                document.getElementById('leftBtn').addEventListener('touchstart', () => this.keys['ArrowLeft'] = true);
+                document.getElementById('leftBtn').addEventListener('touchend', () => this.keys['ArrowLeft'] = false);
+                document.getElementById('rightBtn').addEventListener('touchstart', () => this.keys['ArrowRight'] = true);
+                document.getElementById('rightBtn').addEventListener('touchend', () => this.keys['ArrowRight'] = false);
+                document.getElementById('jumpBtn').addEventListener('touchstart', () => this.keys[' '] = true);
+                document.getElementById('jumpBtn').addEventListener('touchend', () => this.keys[' '] = false);
+            }
+
+            start() {
+                this.spawnInterval = setInterval(() => { this.spawnObjects(); }, 1500);
+                this.gameLoop();
+            }
+
+            stop() {
+                clearInterval(this.spawnInterval);
+                this.gameOver = true;
+            }
+
+            spawnObjects() {
+                if (Math.random() < 0.6) {
+                    this.cubes.push({
+                        x: Math.random() * (this.canvas.width - 30), y: -30,
+                        width: 25, height: 25, color: '#00ff88',
+                        speed: 3 + Math.random() * 2, rotation: 0
+                    });
+                }
+                if (Math.random() < 0.4) {
+                    this.obstacles.push({
+                        x: Math.random() * (this.canvas.width - 40), y: -40,
+                        width: 35, height: 35, color: '#ff4444',
+                        speed: 4 + Math.random() * 2, rotation: 0
+                    });
                 }
             }
-            showLoading(show) { document.getElementById('loadingSpinner').classList.toggle('show', show); }
-            showAlert(title, message) { this.tg?.showAlert ? this.tg.showAlert(`${title}: ${message}`) : alert(`${title}\n\n${message}`); }
-            simulateApiCall(duration) { return new Promise(resolve => setTimeout(resolve, duration)); }
+
+            update() {
+                this.updatePlayer();
+                this.updateCubes();
+                this.updateObstacles();
+                this.updateParticles();
+                this.checkCollisions();
+            }
+
+            updatePlayer() {
+                if (this.keys['ArrowLeft'] || this.keys['a']) {
+                    this.player.x = Math.max(this.player.width / 2, this.player.x - this.player.speed);
+                }
+                if (this.keys['ArrowRight'] || this.keys['d']) {
+                    this.player.x = Math.min(this.canvas.width - this.player.width / 2, this.player.x + this.player.speed);
+                }
+                if ((this.keys[' '] || this.keys['ArrowUp'] || this.keys['w']) && !this.player.isJumping) {
+                    this.player.isJumping = true;
+                    this.player.jumpHeight = 0;
+                }
+                if (this.player.isJumping) {
+                    this.player.jumpHeight += 8;
+                    if (this.player.jumpHeight >= this.player.maxJump) this.player.isJumping = false;
+                } else if (this.player.jumpHeight > 0) {
+                    this.player.jumpHeight -= 8;
+                }
+            }
+
+            updateCubes() {
+                for (let i = this.cubes.length - 1; i >= 0; i--) {
+                    const cube = this.cubes[i];
+                    cube.y += cube.speed;
+                    cube.rotation += 0.1;
+                    if (cube.y > this.canvas.height) this.cubes.splice(i, 1);
+                }
+            }
+
+            updateObstacles() {
+                for (let i = this.obstacles.length - 1; i >= 0; i--) {
+                    const obstacle = this.obstacles[i];
+                    obstacle.y += obstacle.speed;
+                    obstacle.rotation += 0.05;
+                    if (obstacle.y > this.canvas.height) this.obstacles.splice(i, 1);
+                }
+            }
+
+            updateParticles() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const particle = this.particles[i];
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.alpha -= 0.02;
+                    particle.vy += 0.1;
+                    if (particle.alpha <= 0) this.particles.splice(i, 1);
+                }
+            }
+
+            checkCollisions() {
+                const playerY = this.player.y - this.player.jumpHeight;
+                for (let i = this.cubes.length - 1; i >= 0; i--) {
+                    const cube = this.cubes[i];
+                    if (this.isColliding(this.player.x, playerY, this.player.width, this.player.height, cube.x, cube.y, cube.width, cube.height)) {
+                        this.score += 10;
+                        this.createParticles(cube.x + cube.width / 2, cube.y + cube.height / 2, cube.color);
+                        this.cubes.splice(i, 1);
+                        this.updateUI();
+                    }
+                }
+                for (let i = this.obstacles.length - 1; i >= 0; i--) {
+                    const obstacle = this.obstacles[i];
+                    if (this.isColliding(this.player.x, playerY, this.player.width, this.player.height, obstacle.x, obstacle.y, obstacle.width, obstacle.height)) {
+                        this.lives--;
+                        this.createParticles(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2, obstacle.color);
+                        this.obstacles.splice(i, 1);
+                        this.updateUI();
+                        if (this.lives <= 0) {
+                            this.gameOver = true;
+                            this.showGameOver();
+                        }
+                    }
+                }
+            }
+
+            isColliding(x1, y1, w1, h1, x2, y2, w2, h2) {
+                return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
+            }
+
+            createParticles(x, y, color) {
+                for (let i = 0; i < 8; i++) {
+                    this.particles.push({
+                        x: x, y: y, vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8, alpha: 1,
+                        color: color, size: Math.random() * 4 + 2
+                    });
+                }
+            }
+
+            draw() {
+                this.ctx.fillStyle = 'rgba(20, 20, 35, 0.8)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.drawCube(this.player.x, this.player.y - this.player.jumpHeight, this.player.width, this.player.height, this.player.color, 0);
+                this.cubes.forEach(cube => this.drawCube(cube.x, cube.y, cube.width, cube.height, cube.color, cube.rotation));
+                this.obstacles.forEach(obstacle => this.drawCube(obstacle.x, obstacle.y, obstacle.width, obstacle.height, obstacle.color, obstacle.rotation));
+                this.particles.forEach(particle => {
+                    this.ctx.save();
+                    this.ctx.globalAlpha = particle.alpha;
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.fillRect(particle.x, particle.y, particle.size, particle.size);
+                    this.ctx.restore();
+                });
+                this.ctx.fillStyle = '#333';
+                this.ctx.fillRect(0, this.canvas.height - 10, this.canvas.width, 10);
+            }
+
+            drawCube(x, y, width, height, color, rotation) {
+                this.ctx.save();
+                this.ctx.translate(x + width / 2, y + height / 2);
+                this.ctx.rotate(rotation);
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(-width / 2, -height / 2, width, height);
+                this.ctx.fillStyle = this.lightenColor(color, 20);
+                this.ctx.fillRect(-width / 2, -height / 2, width, -height / 3);
+                this.ctx.fillStyle = this.darkenColor(color, 20);
+                this.ctx.fillRect(width / 2, -height / 2, width / 3, height);
+                this.ctx.restore();
+            }
+
+            lightenColor(color, percent) {
+                const num = parseInt(color.replace("#", ""), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = (num >> 16) + amt; const G = (num >> 8 & 0x00FF) + amt; const B = (num & 0x0000FF) + amt;
+                return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+            }
+
+            darkenColor(color, percent) {
+                const num = parseInt(color.replace("#", ""), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = (num >> 16) - amt; const G = (num >> 8 & 0x00FF) - amt; const B = (num & 0x0000FF) - amt;
+                return "#" + (0x1000000 + (R > 0 ? R : 0) * 0x10000 + (G > 0 ? G : 0) * 0x100 + (B > 0 ? B : 0)).toString(16).slice(1);
+            }
+
+            updateUI() {
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('lives').textContent = this.lives;
+            }
+
+            showGameOver() {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.fillStyle = '#fff';
+                this.ctx.font = 'bold 36px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 50);
+                this.ctx.font = '24px Arial';
+                this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2);
+                this.ctx.font = '20px Arial';
+                this.ctx.fillText('Tap to restart', this.canvas.width / 2, this.canvas.height / 2 + 50);
+                this.canvas.addEventListener('click', () => this.restart(), { once: true });
+            }
+
+            restart() {
+                this.score = 0; this.lives = 3; this.gameOver = false;
+                this.cubes = []; this.obstacles = []; this.particles = [];
+                this.updateUI(); this.start();
+            }
+
+            gameLoop() {
+                if (this.gameOver) return;
+                this.update(); this.draw();
+                requestAnimationFrame(() => this.gameLoop());
+            }
         }
+
         document.addEventListener('DOMContentLoaded', () => new TelegramMiniApp());
-        if (!window.Telegram?.WebApp?.initData) setTimeout(() => { const msg = document.getElementById('messageInput'); if (msg && !msg.value) msg.value = "Hello from MyRelay Bot! This is a test message from our beautiful mini app."; }, 3000);
     </script>
 </body>
 </html>
