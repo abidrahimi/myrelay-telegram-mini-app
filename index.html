@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyRelay Bot - Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary-color: #0088cc; --accent-color: #34b7f1;
+            --bg-primary: #ffffff; --bg-secondary: #f5f5f5;
+            --text-primary: #212121; --text-secondary: #757575;
+            --border-color: #e0e0e0; --shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+            --border-radius: 12px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: var(--bg-secondary); color: var(--text-primary); line-height: 1.6; }
+        .app-container { min-height: 100vh; max-width: 100%; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; padding: 20px 16px; box-shadow: var(--shadow); }
+        .header-content { text-align: center; }
+        .app-title { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+        .app-subtitle { font-size: 14px; opacity: 0.9; }
+        .main-content { padding: 20px 16px; }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+        .stat-card { background: var(--bg-primary); padding: 16px; border-radius: var(--border-radius); box-shadow: var(--shadow); display: flex; align-items: center; gap: 12px; }
+        .stat-icon { font-size: 24px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); border-radius: 50%; }
+        .stat-info h3 { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+        .stat-value { font-size: 20px; font-weight: 700; color: var(--primary-color); }
+        .actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+        .action-btn { background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 16px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s ease; font-size: 14px; font-weight: 500; }
+        .action-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--primary-color); }
+        .btn-icon { font-size: 20px; }
+        .composer { background: var(--bg-primary); border-radius: var(--border-radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 24px; }
+        .message-input { width: 100%; min-height: 100px; border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; font-size: 14px; resize: vertical; margin-bottom: 12px; font-family: inherit; }
+        .message-input:focus { outline: none; border-color: var(--primary-color); }
+        .composer-actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .btn-primary, .btn-secondary { padding: 10px 20px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-primary:hover { background: #0077b3; transform: translateY(-1px); }
+        .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { background: #e9ecef; }
+        .activity-list { background: var(--bg-primary); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 24px; }
+        .activity-item { padding: 12px 16px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 12px; }
+        .activity-item:last-child { border-bottom: none; }
+        .activity-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .activity-success { background: #e8f5e8; color: #2e7d32; }
+        .activity-info { background: #e3f2fd; color: #1565c0; }
+        .activity-content { flex: 1; }
+        .activity-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+        .activity-time { font-size: 12px; color: var(--text-secondary); }
+        .footer { background: var(--bg-primary); padding: 16px; text-align: center; color: var(--text-secondary); font-size: 12px; border-top: 1px solid var(--border-color); }
+        .loading-spinner { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.9); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .loading-spinner.show { display: flex; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-left: 4px solid var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @media (max-width: 480px) { .stats-grid, .actions-grid { grid-template-columns: 1fr; } .composer-actions { flex-direction: column; } .btn-primary, .btn-secondary { width: 100%; } }
+        @media (prefers-color-scheme: dark) { :root { --bg-primary: #1c1c1c; --bg-secondary: #2d2d2d; --text-primary: #ffffff; --text-secondary: #b0b0b0; --border-color: #444444; } }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="header-content">
+                <h1 class="app-title">🚀 MyRelay Bot</h1>
+                <p class="app-subtitle">Your smart messaging assistant</p>
+            </div>
+        </header>
+        <main class="main-content">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-info"><h3>Messages Sent</h3><p class="stat-value" id="messagesCount">0</p></div></div>
+                <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-info"><h3>Active Chats</h3><p class="stat-value" id="activeChats">0</p></div></div>
+            </div>
+            <div class="actions-section">
+                <h2 class="section-title">Quick Actions</h2>
+                <div class="actions-grid">
+                    <button class="action-btn" id="sendMessageBtn"><span class="btn-icon">📨</span><span>Send Message</span></button>
+                    <button class="action-btn" id="manageChatsBtn"><span class="btn-icon">💬</span><span>Manage Chats</span></button>
+                    <button class="action-btn" id="settingsBtn"><span class="btn-icon">⚙️</span><span>Settings</span></button>
+                    <button class="action-btn" id="analyticsBtn"><span class="btn-icon">📈</span><span>Analytics</span></button>
+                </div>
+            </div>
+            <div class="composer-section">
+                <h2 class="section-title">Quick Message</h2>
+                <div class="composer">
+                    <textarea id="messageInput" placeholder="Type your message here..." class="message-input"></textarea>
+                    <div class="composer-actions">
+                        <button class="btn-secondary" id="clearBtn">Clear</button>
+                        <button class="btn-primary" id="sendBtn">Send Message</button>
+                    </div>
+                </div>
+            </div>
+            <div class="activity-section">
+                <h2 class="section-title">Recent Activity</h2>
+                <div class="activity-list" id="activityList"></div>
+            </div>
+        </main>
+        <footer class="footer">
+            <p>Powered by MyRelay Bot • @myrelay1bot</p>
+        </footer>
+    </div>
+    <div class="loading-spinner" id="loadingSpinner"><div class="spinner"></div></div>
+    <script>
+        class TelegramMiniApp {
+            constructor() {
+                this.tg = window.Telegram?.WebApp;
+                this.init();
+            }
+            init() {
+                console.log('🚀 MyRelay Bot Mini App Started');
+                if (this.tg?.initData) {
+                    this.tg.expand();
+                    this.tg.enableClosingConfirmation();
+                    this.tg.ready();
+                    console.log('✅ Telegram Web App Initialized');
+                } else {
+                    console.log('🌐 Running in Standalone Mode');
+                }
+                this.setTheme();
+                this.bindEvents();
+                this.loadData();
+                this.simulateUserData();
+            }
+            setTheme() {
+                try {
+                    if (this.tg?.colorScheme) {
+                        const theme = this.tg.colorScheme;
+                        document.documentElement.style.setProperty('--bg-primary', theme === 'dark' ? '#1c1c1c' : '#ffffff');
+                        document.documentElement.style.setProperty('--bg-secondary', theme === 'dark' ? '#2d2d2d' : '#f5f5f5');
+                        document.documentElement.style.setProperty('--text-primary', theme === 'dark' ? '#ffffff' : '#212121');
+                        document.documentElement.style.setProperty('--text-secondary', theme === 'dark' ? '#b0b0b0' : '#757575');
+                    }
+                } catch (error) {
+                    console.log('Theme error:', error);
+                }
+            }
+            bindEvents() {
+                document.getElementById('sendMessageBtn').addEventListener('click', () => this.showAlert('Send Message', 'Message sending feature will be implemented here.'));
+                document.getElementById('manageChatsBtn').addEventListener('click', () => this.showAlert('Manage Chats', 'Chat management feature will be implemented here.'));
+                document.getElementById('settingsBtn').addEventListener('click', () => this.showAlert('Settings', 'Settings panel will be implemented here.'));
+                document.getElementById('analyticsBtn').addEventListener('click', () => this.showAlert('Analytics', 'Analytics dashboard will be implemented here.'));
+                document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
+                document.getElementById('clearBtn').addEventListener('click', () => this.clearMessage());
+                document.getElementById('messageInput').addEventListener('keydown', (e) => { if (e.ctrlKey && e.key === 'Enter') this.sendMessage(); });
+                if (this.tg) this.tg.onEvent('themeChanged', this.setTheme.bind(this));
+            }
+            async loadData() {
+                this.showLoading(true);
+                try {
+                    await this.simulateApiCall(1000);
+                    this.updateStats({ messages: Math.floor(Math.random() * 1000) + 500, chats: Math.floor(Math.random() * 50) + 10 });
+                    this.loadActivity();
+                } catch (error) {
+                    this.showAlert('Error', 'Failed to load data. Please try again.');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+            updateStats(data) {
+                document.getElementById('messagesCount').textContent = data.messages.toLocaleString();
+                document.getElementById('activeChats').textContent = data.chats.toLocaleString();
+            }
+            loadActivity() {
+                const activities = [
+                    { type: 'success', title: 'Message sent to Group Chat', time: '2 minutes ago' },
+                    { type: 'info', title: 'New chat connected', time: '1 hour ago' },
+                    { type: 'success', title: 'Broadcast completed', time: '3 hours ago' },
+                    { type: 'info', title: 'Settings updated', time: '1 day ago' },
+                    { type: 'success', title: 'Welcome message sent', time: '2 days ago' }
+                ];
+                const activityList = document.getElementById('activityList');
+                activityList.innerHTML = '';
+                activities.forEach(activity => {
+                    const activityItem = document.createElement('div');
+                    activityItem.className = 'activity-item';
+                    activityItem.innerHTML = `<div class="activity-icon activity-${activity.type}">${activity.type === 'success' ? '✓' : 'ℹ'}</div><div class="activity-content"><div class="activity-title">${activity.title}</div><div class="activity-time">${activity.time}</div></div>`;
+                    activityList.appendChild(activityItem);
+                });
+            }
+            sendMessage() {
+                const messageInput = document.getElementById('messageInput');
+                const message = messageInput.value.trim();
+                if (!message) return this.showAlert('Error', 'Please enter a message.');
+                if (message.length > 500) return this.showAlert('Error', 'Message is too long. Maximum 500 characters.');
+                this.showLoading(true);
+                setTimeout(() => {
+                    this.showLoading(false);
+                    this.showAlert('Success', `Message sent successfully!\n\n"${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`);
+                    messageInput.value = '';
+                    this.addNewActivity(`Message sent: ${message.substring(0, 30)}${message.length > 30 ? '...' : ''}`);
+                    this.incrementMessagesCount();
+                }, 1500);
+            }
+            clearMessage() { document.getElementById('messageInput').value = ''; document.getElementById('messageInput').focus(); }
+            addNewActivity(title) {
+                const activityList = document.getElementById('activityList');
+                const activityItem = document.createElement('div');
+                activityItem.className = 'activity-item';
+                activityItem.innerHTML = `<div class="activity-icon activity-success">✓</div><div class="activity-content"><div class="activity-title">${title}</div><div class="activity-time">Just now</div></div>`;
+                activityList.insertBefore(activityItem, activityList.firstChild);
+                if (activityList.children.length > 5) activityList.removeChild(activityList.lastChild);
+            }
+            incrementMessagesCount() {
+                const countElement = document.getElementById('messagesCount');
+                const currentCount = parseInt(countElement.textContent.replace(/,/g, '')) || 0;
+                countElement.textContent = (currentCount + 1).toLocaleString();
+            }
+            simulateUserData() {
+                if (this.tg?.initDataUnsafe?.user) {
+                    const user = this.tg.initDataUnsafe.user;
+                    console.log('Telegram User:', user);
+                    const subtitle = document.querySelector('.app-subtitle');
+                    if (subtitle && user.first_name) subtitle.textContent = `Welcome, ${user.first_name}!`;
+                }
+            }
+            showLoading(show) { document.getElementById('loadingSpinner').classList.toggle('show', show); }
+            showAlert(title, message) { this.tg?.showAlert ? this.tg.showAlert(`${title}: ${message}`) : alert(`${title}\n\n${message}`); }
+            simulateApiCall(duration) { return new Promise(resolve => setTimeout(resolve, duration)); }
+        }
+        document.addEventListener('DOMContentLoaded', () => new TelegramMiniApp());
+        if (!window.Telegram?.WebApp?.initData) setTimeout(() => { const msg = document.getElementById('messageInput'); if (msg && !msg.value) msg.value = "Hello from MyRelay Bot! This is a test message from our beautiful mini app."; }, 3000);
+    </script>
+</body>
+</html>
